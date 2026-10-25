@@ -41,3 +41,23 @@ describe('parseMessage URL choice', () => {
     expect(parsed.company).toBe('Mercedes-Benz');
   });
 });
+
+describe('company/title order', () => {
+  const title = (t: string) => parseMessage({ content: '', embeds: [{ url: 'https://jobs.lever.co/a/b', title: t }] });
+
+  it('reads the feed shape Title — Company', () => {
+    expect(title('Software Engineering Intern — Experian')).toMatchObject({ company: 'Experian', title: 'Software Engineering Intern' });
+  });
+
+  it('keeps a hyphenated suffix in the title', () => {
+    expect(title('SWE Intern - Summer 2027 — Datadog')).toMatchObject({ company: 'Datadog', title: 'SWE Intern - Summer 2027' });
+  });
+
+  it('flips to Company — Title when role words say so', () => {
+    expect(title('Datadog — Backend Intern')).toMatchObject({ company: 'Datadog', title: 'Backend Intern' });
+  });
+
+  it('defaults to Title — Company for embed titles when ambiguous', () => {
+    expect(title('Platform — Acme')).toMatchObject({ company: 'Acme', title: 'Platform' });
+  });
+});

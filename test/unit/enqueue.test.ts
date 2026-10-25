@@ -82,6 +82,26 @@ describe('enqueueFromMessage', () => {
   });
 });
 
+describe('LinkedIn / Indeed posts', () => {
+  it('become needs_you "apply manually" without any request', async () => {
+    const { resolve } = await import('../../src/jobs/resolve.js');
+    const fetch = vi.fn();
+    deps.resolve = (url) => resolve(url, { fetch });
+    await enqueueFromMessage(
+      { id: '100', content: '', embeds: [{ url: 'https://www.linkedin.com/jobs/view/4012345678', title: 'SWE Intern — Acme' }] },
+      deps,
+    );
+    expect(getByMessageId(db, '100')).toMatchObject({
+      status: 'needs_you',
+      needsReason: 'LinkedIn link — apply manually',
+      company: 'Acme',
+      title: 'SWE Intern',
+    });
+    expect(emoji).toEqual([['100', 'needs_you']]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
 describe('dequeueMessage', () => {
   it('deletes a queued job and clears the emoji', async () => {
     await enqueueFromMessage(post('100', 'https://jobs.lever.co/a/b'), deps);

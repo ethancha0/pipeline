@@ -1,0 +1,12 @@
+{
+  "description": "Real non-job status post from the scraper webhook: no link",
+  "message": {
+    "content": "JobSpy warning: LinkedIn returned 0 job cards on 3 polls in a row (statuses=[200]); it may be throttling this runner.",
+    "embeds": []
+  },
+  "expected": {
+    "url": null,
+    "company": null,
+    "title": null
+  }
+}

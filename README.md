@@ -79,6 +79,8 @@ On start, applypipe scans the last 14 days (up to 500 messages) of the channel f
 
 Remove your ✅ while a job is still 👀 to drop it from the queue.
 
+LinkedIn and Indeed links are never opened (their terms forbid automation): ✅ on one gives ⚠️ "apply manually".
+
 ## Troubleshooting
 
 - **"Discord login failed … intent"**: turn on Message Content Intent (step 3.2).

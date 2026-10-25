@@ -85,7 +85,7 @@ One person (the owner), a CS/SWE student on an M1 Pro MacBook, applying to ~20�
 ## Out of scope (do not build)
 
 - Auto-submitting, ever.
-- LinkedIn Easy Apply or any LinkedIn automation (against LinkedIn's terms).
+- LinkedIn Easy Apply or any LinkedIn automation (against LinkedIn's terms). Same for Indeed. A ✅ on a LinkedIn/Indeed post becomes ⚠️ "apply manually" without the page ever being opened (D21).
 - Multi-user, hosted, or cloud deployment.
 - **V3:** resume-variant routing (SWE vs PM resume), outcome analytics / callback tracking, email watcher (auto-clicking Workday verification links, reading rejections/OA invites).
 - A Chrome-extension "queue this page" button (possible later, reusing the queue).

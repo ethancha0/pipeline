@@ -27,8 +27,9 @@ const TRAILING_PUNCT = /[.,;:!?*_~]+$/;
 
 /**
  * Extract the apply URL, company and title from a feed post.
- * Default rules (05-decisions.md OQ1): the real webhook format is unconfirmed,
- * so content, embed URLs, descriptions and field values are all searched.
+ * The real feed (05-decisions.md OQ1) posts embed-only messages: URL = apply link,
+ * title = `Title — Company`. Content, descriptions and field values are searched
+ * too so other formats (fixtures) keep working.
  */
 export function parseMessage(msg: MessageLike): ParsedMessage {
   const urls = collectUrls(msg);
@@ -62,8 +63,10 @@ function collectUrls(msg: MessageLike): string[] {
 
 const COMPANY_KEY = /^(company|employer|organization)$/i;
 const TITLE_KEY = /^(role|title|position|job|job title)$/i;
-// `Company — Title`, `Company – Title`, `Company | Title`, `Company - Title` (spaces required around the hyphen).
-const SEPARATOR = /\s+[—–]\s+|\s*\|\s*|\s+-\s+/;
+// Strongest first: em/en dash, pipe, then a hyphen with spaces around it (so "Mercedes-Benz" stays whole).
+const SEPARATORS = [/\s+[—–]\s+/g, /\s*\|\s*/g, /\s+-\s+/g];
+const ROLE_WORDS =
+  /\b(intern(ship)?s?|engineer(ing)?|developer|software|swe|co-?op|analyst|scientist|research(er)?|designer|programmer|technician|apprentice|fellow(ship)?)\b/i;
 
 function extractCompanyTitle(msg: MessageLike): { company: string | null; title: string | null } {
   let company: string | null = null;
@@ -83,17 +86,46 @@ function extractCompanyTitle(msg: MessageLike): { company: string | null; title:
   }
   if (company && title) return { company, title };
 
-  // 2. `Company — Title` in the embed title or the first content line that has one.
-  const lines = [...msg.embeds.map((e) => e.title ?? ''), ...msg.content.split('\n')];
+  // 2. A `Title — Company` / `Company — Title` pair in the embed title or the first content line that has one.
+  //    The real feed's embed titles are `Title — Company` (05-decisions.md OQ1), so that's the embed default.
+  const lines = [
+    ...msg.embeds.map((e) => ({ text: e.title ?? '', titleFirst: true })),
+    ...msg.content.split('\n').map((text) => ({ text, titleFirst: false })),
+  ];
   for (const line of lines) {
-    const text = clean(line);
+    const text = clean(line.text);
     if (!text || /^[A-Za-z ]{2,20}[:：]/.test(text)) continue;
-    const parts = text.split(SEPARATOR).map((p) => p.trim()).filter(Boolean);
-    if (parts.length >= 2) {
-      return { company: company ?? parts[0]!, title: title ?? parts.slice(1).join(' · ') };
-    }
+    const pair = splitPair(text, line.titleFirst);
+    if (pair) return { company: company ?? pair.company, title: title ?? pair.title };
   }
   return { company, title };
+}
+
+/**
+ * Split "A — B" into company and title. Role words ("Intern", "Engineer"…) on
+ * exactly one side decide which is the title; otherwise `titleFirstDefault` does.
+ * Splits at the side nearest the company so a title like "SWE Intern - Summer 2027" stays whole.
+ */
+function splitPair(text: string, titleFirstDefault: boolean): { company: string; title: string } | null {
+  for (const re of SEPARATORS) {
+    const seps = [...text.matchAll(re)];
+    if (seps.length === 0) continue;
+    const first = seps[0]!;
+    const last = seps.at(-1)!;
+    const left = text.slice(0, first.index).trim();
+    const right = text.slice(first.index + first[0].length).trim();
+    if (!left || !right) return null;
+
+    const leftRole = ROLE_WORDS.test(left);
+    const rightRole = ROLE_WORDS.test(right);
+    const titleFirst = leftRole !== rightRole ? leftRole : titleFirstDefault;
+
+    if (titleFirst) {
+      return { title: text.slice(0, last.index).trim(), company: text.slice(last.index + last[0].length).trim() };
+    }
+    return { company: left, title: right };
+  }
+  return null;
 }
 
 /** Strip Discord markdown, links and leading emoji/bullets from one line. */

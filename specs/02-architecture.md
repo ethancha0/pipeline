@@ -269,7 +269,7 @@ What must never be lost: `answer_bank` (exported to JSON on every write). Everyt
 
 - `normalize(url)`: lowercase host; drop fragment; drop query params `utm_*`, `gh_src`, `source`, `ref`, `lever-source`, `src`; strip trailing slash; for Greenhouse keep `gh_jid` (company-hosted embeds). Returns `{ normalizedUrl, ats, tenant, reqId }`.
 - Req ID extraction: Greenhouse `/jobs/<digits>` or `gh_jid`; Lever `/<company>/<uuid>`; Ashby `/<company>/<uuid>`; Workday the trailing `_<REQ>` path segment (e.g. `..._R12345`).
-- `resolve(url)`: follow HTTP redirects (fetch, max 5). If the final host is a wrapper (`simplify.jobs`, `github.com`), open it in a background Playwright page and take the first link whose host is a known ATS or whose text matches /apply/i. If nothing resolves → job `needs_you` "couldn't find the application link".
+- `resolve(url)`: LinkedIn and Indeed URLs (`*.linkedin.com`, `*.indeed.com`) are never fetched or opened → job `needs_you` "LinkedIn link — apply manually" / "Indeed link — apply manually" (D21). Otherwise follow HTTP redirects (fetch, max 5), stopping the same way if a redirect lands on one of those hosts. If the final host is a wrapper (`simplify.jobs`, `github.com`), open it in a background Playwright page and take the first link whose host is a known ATS or whose text matches /apply/i. If nothing resolves → job `needs_you` "couldn't find the application link".
 - Dedupe: before insert, check `normalized_url` and `(ats, tenant, req_id)`; on hit, react 🔁 on the new post and don't create a job.
 
 ### ATS detection (`jobs/detect.ts`)

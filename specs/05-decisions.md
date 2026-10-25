@@ -24,6 +24,7 @@
 | D18 | Answer bank UI = the exported JSON file | Zero UI to build |
 | D19 | Why-us drafts from JD + profile only | Fast and cheap; owner adds the specific hook while reviewing |
 | D20 | Catch-up scans the full `CATCHUP_DAYS` / 500-message window on every start instead of stopping at `last_processed_message_id` | A ✅ added offline to a post older than the last one scanned would otherwise be missed (the Phase 2 restart check); cost is ≤5 history pages plus one reaction lookup per unhandled ✅ post |
+| D21 | LinkedIn/Indeed links → `needs_you` "apply manually", never fetched or opened | ~60% of the live feed is LinkedIn/Indeed; automating them breaks their terms and risks the owner's accounts. Owner's choice (2026-10-24). Better fix lives upstream: have the scraper post the company's direct apply URL (e.g. JobSpy `job_url_direct`) when available |
 
 ## Rejected alternatives
 
@@ -51,7 +52,7 @@
 
 ## Open questions (with the interim default to build)
 
-- **OQ1 — Webhook message format (affects Phase 2).** It's unknown whether the apply link is in the message text or an embed, and whether it points to the ATS directly or to a Simplify/GitHub page. *Interim:* the parser checks content + embeds and the resolver handles wrapper pages. **First task in Phase 2: get one real message (raw JSON via the bot, or a screenshot) and add it as a fixture.**
+- **OQ1 — Webhook message format (affects Phase 2).** *Resolved 2026-10-24 from the live channel:* posts are embed-only — embed `url` is the apply link (direct to the ATS/job board; no Simplify/GitHub wrappers seen in 100 posts), embed `title` is `Title — Company`, `description` is the location, fields `Posted` and `Source` (e.g. "Greenhouse (direct)", "LinkedIn", "Indeed"). The channel also carries scraper status posts with no link. Fixtures: `test/fixtures/discord/real-*.json`. The parser still searches content and fields so other formats work.
 - **OQ2 — Shared Workday password.** One leak exposes every tenant. *Interim:* shared password as decided; keep `account.ts` written so a per-tenant password is a small change.
 - **OQ3 — Workday parsed work history.** Whether to keep the entries Workday parses from the resume or replace them from `profile.experience`. *Interim:* keep the parsed entries and flag the section yellow.
 - **OQ4 — Confidence threshold.** 0.7 is a guess; tune it after ~20 applications by checking how often yellow answers were edited (`field_fills`).

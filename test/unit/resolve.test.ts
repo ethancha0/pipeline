@@ -35,6 +35,22 @@ describe('resolve', () => {
     expect(r).toEqual({ ok: false, url: 'https://simplify.jobs/p/abc', reason: 'wrapper link — resolver lands in Phase 3' });
   });
 
+  it.each([
+    ['https://www.linkedin.com/jobs/view/4012345678', 'LinkedIn link — apply manually'],
+    ['https://www.indeed.com/viewjob?jk=abc123', 'Indeed link — apply manually'],
+  ])('never requests %s', async (url, reason) => {
+    const fetch = vi.fn();
+    expect(await resolve(url, { fetch })).toEqual({ ok: false, url, reason });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('stops before following a redirect into LinkedIn', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(redirect('https://www.linkedin.com/jobs/view/1'));
+    const r = await resolve('https://short.example/x', { fetch });
+    expect(r).toEqual({ ok: false, url: 'https://www.linkedin.com/jobs/view/1', reason: 'LinkedIn link — apply manually' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the URL when the request fails', async () => {
     const r = await resolve('https://careers.example.com/42', {
       fetch: vi.fn(async () => {

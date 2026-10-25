@@ -76,6 +76,18 @@ export function isWrapperHost(host: string): boolean {
   return WRAPPER_HOSTS.some((w) => h === w || h.endsWith(`.${w}`));
 }
 
+// Job boards applypipe never opens or fetches: automating them breaks their terms (01-product.md → Out of scope).
+const MANUAL_ONLY_BOARDS: [string, string][] = [
+  ['linkedin.com', 'LinkedIn'],
+  ['indeed.com', 'Indeed'],
+];
+
+/** "LinkedIn" / "Indeed" for hosts the owner must apply on manually, else null. */
+export function manualOnlyBoard(host: string): string | null {
+  const h = host.toLowerCase();
+  return MANUAL_ONLY_BOARDS.find(([d]) => h === d || h.endsWith(`.${d}`))?.[1] ?? null;
+}
+
 const DISCORD_HOSTS = ['discord.com', 'discordapp.com', 'discordapp.net', 'discord.gg'];
 
 export function isDiscordHost(host: string): boolean {

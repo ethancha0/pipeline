@@ -1,0 +1,28 @@
+{
+  "description": "Real post from the feed webhook (OQ1): embed-only, embed URL is the direct ATS link, title is `Title — Company`",
+  "message": {
+    "content": "",
+    "embeds": [
+      {
+        "url": "https://jobs.smartrecruiters.com/experian/744000157657879",
+        "title": "Software Engineering Intern — Experian",
+        "description": "Cyberjaya, Selangor, my",
+        "fields": [
+          {
+            "name": "Posted",
+            "value": "1 hour ago"
+          },
+          {
+            "name": "Source",
+            "value": "SmartRecruiters (direct)"
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "url": "https://jobs.smartrecruiters.com/experian/744000157657879",
+    "company": "Experian",
+    "title": "Software Engineering Intern"
+  }
+}

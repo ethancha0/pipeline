@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectFromUrl, isDiscordHost, isWrapperHost } from '../../src/jobs/detect.js';
+import { detectFromUrl, isDiscordHost, isWrapperHost, manualOnlyBoard } from '../../src/jobs/detect.js';
 
 describe('detectFromUrl', () => {
   it.each([
@@ -45,6 +45,12 @@ describe('host classes', () => {
     expect(isWrapperHost('simplify.jobs')).toBe(true);
     expect(isWrapperHost('www.github.com')).toBe(true);
     expect(isWrapperHost('notgithub.com')).toBe(false);
+  });
+  it('manual-only boards', () => {
+    expect(manualOnlyBoard('www.linkedin.com')).toBe('LinkedIn');
+    expect(manualOnlyBoard('www.indeed.com')).toBe('Indeed');
+    expect(manualOnlyBoard('uk.indeed.com')).toBe('Indeed');
+    expect(manualOnlyBoard('notlinkedin.com')).toBeNull();
   });
   it('discord', () => {
     expect(isDiscordHost('cdn.discordapp.com')).toBe(true);
