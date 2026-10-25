@@ -1,0 +1,18 @@
+{
+  "description": "Simplify link in content, real Ashby link in an embed field: the ATS link wins",
+  "message": {
+    "content": "Vandelay Industries - Software Engineer Intern https://simplify.jobs/p/1234",
+    "embeds": [
+      {
+        "fields": [
+          { "name": "Direct", "value": "https://jobs.ashbyhq.com/vandelay/5b1c3d2e-8f9a-4b6c-a7d8-e9f0a1b2c3d4/application?utm_source=Simplify" }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "url": "https://jobs.ashbyhq.com/vandelay/5b1c3d2e-8f9a-4b6c-a7d8-e9f0a1b2c3d4/application?utm_source=Simplify",
+    "company": "Vandelay Industries",
+    "title": "Software Engineer Intern"
+  }
+}

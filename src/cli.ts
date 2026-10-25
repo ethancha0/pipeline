@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { ConfigError, ensureHome, loadConfig, type Paths } from './config.js';
 import { openDb } from './db/db.js';
+import { DiscordLoginError, startBot, type Bot } from './discord/bot.js';
 import { countJobs, JOB_STATUSES, listByStatus, type Job } from './db/jobs.js';
 import { log } from './log.js';
 import {
@@ -22,21 +23,50 @@ const program = new Command()
 
 program
   .command('run')
-  .description('validate config and profile, open the DB (Phase 1: then exit)')
-  .action(() => {
-    const { paths } = loadConfig();
+  .description('start the Discord bot: catch up on missed ✅, then queue live ones (Ctrl-C to stop)')
+  .action(async () => {
+    const { paths, env } = loadConfig();
     const profile = parseProfileOrThrow(paths);
     const resumeProblem = checkResume(resumePath(profile.resume, paths));
     if (resumeProblem) throw new ConfigError(`Invalid ${paths.profileFile}`, [`resume.path — ${resumeProblem}`]);
 
     const { db, migration } = openDb(paths.dbFile);
+    if (migration.from === migration.to) log.info(`database ${paths.dbFile} up to date (schema v${migration.to})`);
+    else log.info(`database ${paths.dbFile} migrated v${migration.from} → v${migration.to}`);
+
+    // An external failure must never crash the run (CLAUDE.md rule 5).
+    process.on('unhandledRejection', (err) => log.error({ err }, 'unhandled rejection'));
+
+    let bot: Bot;
     try {
-      if (migration.from === migration.to) log.info(`database ${paths.dbFile} up to date (schema v${migration.to})`);
-      else log.info(`database ${paths.dbFile} migrated v${migration.from} → v${migration.to}`);
-      log.info('ready');
-    } finally {
+      bot = await startBot(env, db);
+    } catch (err) {
       db.close();
+      if (err instanceof DiscordLoginError) throw new ConfigError(err.message);
+      throw err;
     }
+
+    await new Promise<void>((done) => {
+      let stopping = false;
+      const shutdown = () => {
+        if (stopping) {
+          log.warn('forced exit');
+          process.exit(1);
+        }
+        stopping = true;
+        log.info('shutting down… (Ctrl-C again to force)');
+        bot
+          .stop()
+          .catch((err: unknown) => log.error({ err }, 'error while stopping the bot'))
+          .finally(() => {
+            db.close();
+            log.info('stopped');
+            done();
+          });
+      };
+      process.on('SIGINT', shutdown);
+      process.on('SIGTERM', shutdown);
+    });
   });
 
 function parseProfileOrThrow(paths: Paths) {

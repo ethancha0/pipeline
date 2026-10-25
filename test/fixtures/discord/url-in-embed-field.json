@@ -1,0 +1,23 @@
+{
+  "description": "Link only inside an embed field as a markdown link; company and role as labelled fields",
+  "message": {
+    "content": "New posting!",
+    "embeds": [
+      {
+        "title": "Internship alert",
+        "description": "",
+        "fields": [
+          { "name": "Company", "value": "Initech" },
+          { "name": "Role", "value": "Software Engineering Intern" },
+          { "name": "Location", "value": "Austin, TX" },
+          { "name": "Apply", "value": "[Apply here](https://initech.wd1.myworkdayjobs.com/en-US/External/job/Austin-TX/Software-Engineering-Intern_R-10234?source=LinkedIn)" }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "url": "https://initech.wd1.myworkdayjobs.com/en-US/External/job/Austin-TX/Software-Engineering-Intern_R-10234?source=LinkedIn",
+    "company": "Initech",
+    "title": "Software Engineering Intern"
+  }
+}

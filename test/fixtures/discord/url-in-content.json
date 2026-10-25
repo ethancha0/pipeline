@@ -1,0 +1,12 @@
+{
+  "description": "Apply link in the message text, bold company — title line",
+  "message": {
+    "content": "**Acme Corp** — Software Engineering Intern\nhttps://boards.greenhouse.io/acmecorp/jobs/4012345?gh_src=abc123",
+    "embeds": []
+  },
+  "expected": {
+    "url": "https://boards.greenhouse.io/acmecorp/jobs/4012345?gh_src=abc123",
+    "company": "Acme Corp",
+    "title": "Software Engineering Intern"
+  }
+}

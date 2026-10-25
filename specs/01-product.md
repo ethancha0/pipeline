@@ -24,7 +24,7 @@ One person (the owner), a CS/SWE student on an M1 Pro MacBook, applying to ~20�
 
 **F1 — Discord trigger & catch-up**
 - Bot reads the feed channel; a ✅ from the owner's Discord user ID queues the post.
-- On startup, scans the channel back to the last processed message (max 14 days / 500 messages) for ✅ reactions not yet in the DB.
+- On startup, scans the channel back 14 days / 500 messages for ✅ reactions not yet in the DB (the whole window every time, so a ✅ added offline to an older post still counts).
 - Removing ✅ while the job is still `queued` removes it from the queue.
 - Acceptance: ✅ on a post while running → `jobs` row `queued` within 5 s and bot adds 👀. Restart after reacting to 3 posts while offline → all 3 queued at startup, none twice.
 

@@ -23,6 +23,7 @@
 | D17 | Review aid = highlights + checklist | Catches flags on earlier Workday pages |
 | D18 | Answer bank UI = the exported JSON file | Zero UI to build |
 | D19 | Why-us drafts from JD + profile only | Fast and cheap; owner adds the specific hook while reviewing |
+| D20 | Catch-up scans the full `CATCHUP_DAYS` / 500-message window on every start instead of stopping at `last_processed_message_id` | A ✅ added offline to a post older than the last one scanned would otherwise be missed (the Phase 2 restart check); cost is ≤5 history pages plus one reaction lookup per unhandled ✅ post |
 
 ## Rejected alternatives
 

@@ -1,0 +1,12 @@
+{
+  "description": "No link at all",
+  "message": {
+    "content": "Reminder: new postings drop every morning!",
+    "embeds": []
+  },
+  "expected": {
+    "url": null,
+    "company": null,
+    "title": null
+  }
+}

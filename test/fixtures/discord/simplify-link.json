@@ -1,0 +1,12 @@
+{
+  "description": "Only a Simplify wrapper link (plus a Discord link that must be ignored)",
+  "message": {
+    "content": "🔥 Hooli – Data Science Intern\nDiscuss: https://discord.com/channels/1/2/3\nhttps://simplify.jobs/p/9a8b7c6d?utm_source=github&ref=Simplify.",
+    "embeds": []
+  },
+  "expected": {
+    "url": "https://simplify.jobs/p/9a8b7c6d?utm_source=github&ref=Simplify",
+    "company": "Hooli",
+    "title": "Data Science Intern"
+  }
+}

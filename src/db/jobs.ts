@@ -1,5 +1,8 @@
-import { ulid } from 'ulid';
+import { monotonicFactory } from 'ulid';
 import { nowIso, type Db } from './db.js';
+
+// Monotonic so jobs created in the same millisecond still sort in insertion order.
+const ulid = monotonicFactory();
 
 export const JOB_STATUSES = [
   'queued',
@@ -140,6 +143,31 @@ export function getByMessageId(db: Db, discordMessageId: string): Job | null {
 export function getByNormalizedUrl(db: Db, normalizedUrl: string): Job | null {
   const row = db.prepare('SELECT * FROM jobs WHERE normalized_url = ?').get(normalizedUrl) as JobRow | undefined;
   return row ? toJob(row) : null;
+}
+
+/** Existing job for the same (ats, tenant, req id), the second dedupe key. */
+export function getByDedupeKey(db: Db, ats: AtsId, atsTenant: string | null, reqId: string): Job | null {
+  const row = db
+    .prepare('SELECT * FROM jobs WHERE ats = ? AND ats_tenant IS ? AND req_id = ?')
+    .get(ats, atsTenant, reqId) as JobRow | undefined;
+  return row ? toJob(row) : null;
+}
+
+export function deleteJob(db: Db, id: string): void {
+  db.prepare('DELETE FROM jobs WHERE id = ?').run(id);
+}
+
+/** "Company — Title" for logs and messages, falling back to the link's host. */
+export function jobLabel(job: Pick<Job, 'company' | 'title' | 'applyUrl' | 'sourceUrl'>): string {
+  let company = job.company;
+  if (!company) {
+    try {
+      company = new URL(job.applyUrl ?? job.sourceUrl).hostname;
+    } catch {
+      company = 'Unknown company';
+    }
+  }
+  return `${company} — ${job.title ?? 'untitled'}`;
 }
 
 export interface StatusDetail {

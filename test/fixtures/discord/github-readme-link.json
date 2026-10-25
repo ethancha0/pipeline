@@ -1,0 +1,18 @@
+{
+  "description": "GitHub README link in an embed description, labelled lines in content",
+  "message": {
+    "content": "**Company:** Pied Piper\n**Role:** Platform Engineering Intern",
+    "embeds": [
+      {
+        "title": "Summer 2027 Internships updated",
+        "description": "See the list: <https://github.com/SimplifyJobs/Summer2027-Internships/blob/dev/README.md>",
+        "fields": []
+      }
+    ]
+  },
+  "expected": {
+    "url": "https://github.com/SimplifyJobs/Summer2027-Internships/blob/dev/README.md",
+    "company": "Pied Piper",
+    "title": "Platform Engineering Intern"
+  }
+}
