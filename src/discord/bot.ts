@@ -14,7 +14,7 @@ import type { Env } from '../config.js';
 import type { Db } from '../db/db.js';
 import { getMeta, setMeta } from '../db/meta.js';
 import { dequeueMessage, enqueueFromMessage, type FeedMessage } from '../jobs/enqueue.js';
-import { resolve } from '../jobs/resolve.js';
+import { resolve, type ResolveDeps } from '../jobs/resolve.js';
 import { log } from '../log.js';
 import { catchUp, type CatchupMessage } from './catchup.js';
 import { createStatusEmoji, type ChannelForEmoji, type SetStatusEmoji } from './status.js';
@@ -22,7 +22,16 @@ import { createStatusEmoji, type ChannelForEmoji, type SetStatusEmoji } from './
 export const TRIGGER_EMOJI = '✅';
 
 export interface Bot {
+  /** Status emoji on a feed post; a no-op until Discord is ready. */
+  setStatusEmoji: SetStatusEmoji;
   stop(): Promise<void>;
+}
+
+export interface BotOptions {
+  /** Extra resolve deps (the background-tab reader for wrapper pages). */
+  resolveDeps?: ResolveDeps;
+  /** Called after jobs may have been queued (catch-up or a live ✅). */
+  onEnqueued?(): void;
 }
 
 export class DiscordLoginError extends Error {
@@ -30,7 +39,7 @@ export class DiscordLoginError extends Error {
 }
 
 /** Log in, catch up on missed ✅ reactions, then handle live ones until `stop()`. */
-export async function startBot(env: Env, db: Db): Promise<Bot> {
+export async function startBot(env: Env, db: Db, opts: BotOptions = {}): Promise<Bot> {
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
@@ -44,7 +53,7 @@ export async function startBot(env: Env, db: Db): Promise<Bot> {
   });
 
   let setStatusEmoji: SetStatusEmoji = async () => {};
-  const deps = () => ({ db, resolve: (url: string) => resolve(url), setStatusEmoji });
+  const deps = () => ({ db, resolve: (url: string) => resolve(url, opts.resolveDeps), setStatusEmoji });
 
   // Catch-up and live reactions share one queue so a message is never enqueued twice concurrently.
   let chain: Promise<unknown> = Promise.resolve();
@@ -82,6 +91,7 @@ export async function startBot(env: Env, db: Db): Promise<Bot> {
       );
       const other = result.other ? `, needs you/failed ${result.other}` : '';
       log.info(`catch-up: queued ${result.queued}, duplicates ${result.duplicates}${other} (${result.scanned} messages scanned)`);
+      opts.onEnqueued?.();
     } catch (err) {
       log.error({ err }, 'catch-up failed; live reactions still work');
     }
@@ -94,6 +104,7 @@ export async function startBot(env: Env, db: Db): Promise<Bot> {
         const msg = reaction.message.partial ? await reaction.message.fetch() : reaction.message;
         await enqueueFromMessage(toFeedMessage(msg), deps());
         bumpLastProcessed(db, msg.id);
+        opts.onEnqueued?.();
       } catch (err) {
         log.error({ err, messageId: reaction.message.id }, 'enqueue failed');
       }
@@ -129,6 +140,7 @@ export async function startBot(env: Env, db: Db): Promise<Bot> {
   }
 
   return {
+    setStatusEmoji: (messageId, status) => setStatusEmoji(messageId, status),
     async stop() {
       await chain;
       await client.destroy();

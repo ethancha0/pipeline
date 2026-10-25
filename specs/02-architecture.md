@@ -269,7 +269,7 @@ What must never be lost: `answer_bank` (exported to JSON on every write). Everyt
 
 - `normalize(url)`: lowercase host; drop fragment; drop query params `utm_*`, `gh_src`, `source`, `ref`, `lever-source`, `src`; strip trailing slash; for Greenhouse keep `gh_jid` (company-hosted embeds). Returns `{ normalizedUrl, ats, tenant, reqId }`.
 - Req ID extraction: Greenhouse `/jobs/<digits>` or `gh_jid`; Lever `/<company>/<uuid>`; Ashby `/<company>/<uuid>`; Workday the trailing `_<REQ>` path segment (e.g. `..._R12345`).
-- `resolve(url)`: LinkedIn and Indeed URLs (`*.linkedin.com`, `*.indeed.com`) are never fetched or opened → job `needs_you` "LinkedIn link — apply manually" / "Indeed link — apply manually" (D21). Otherwise follow HTTP redirects (fetch, max 5), stopping the same way if a redirect lands on one of those hosts. If the final host is a wrapper (`simplify.jobs`, `github.com`), open it in a background Playwright page and take the first link whose host is a known ATS or whose text matches /apply/i. If nothing resolves → job `needs_you` "couldn't find the application link".
+- `resolve(url)`: LinkedIn and Indeed URLs (`*.linkedin.com`, `*.indeed.com`) are never fetched or opened → job `needs_you` "LinkedIn link — apply manually" / "Indeed link — apply manually" (D21). Otherwise follow HTTP redirects (fetch, max 5), stopping the same way if a redirect lands on one of those hosts. If the final host is a wrapper (`simplify.jobs`, `github.com`), open it in a background Playwright page and take the first link whose host is a known ATS or whose text matches /apply/i. A GitHub page (a README listing many jobs) only resolves when it links exactly one ATS posting. If nothing resolves → job `needs_you` "couldn't find the application link".
 - Dedupe: before insert, check `normalized_url` and `(ats, tenant, req_id)`; on hit, react 🔁 on the new post and don't create a job.
 
 ### ATS detection (`jobs/detect.ts`)
@@ -284,7 +284,7 @@ What must never be lost: `answer_bank` (exported to JSON on every write). Everyt
 
 ### Scheduler (`queue/scheduler.ts`)
 
-- Picks `queued` jobs oldest-first while `filling` count < `MAX_PARALLEL`. At most one `filling` job per Workday tenant (others wait).
+- Picks `queued` jobs oldest-first while `filling` count < `MAX_PARALLEL`. At most one `filling` job per Workday tenant (others wait). Jobs whose ATS has no adapter yet stay `queued` until that phase lands (D24). On start, jobs left `filling` by a crash go back to `queued`.
 - Lifecycle per job: set `filling` (⏳) → run adapter → set outcome status → emit event for Discord. Parked tabs stay open; `page.on('close')` on a `ready`/`needs_you` job → `abandoned`.
 - When no jobs are `queued` or `filling` and at least one job finished since the last summary → send the batch summary DM.
 - Unhandled adapter exception → screenshot to `artifacts/<jobId>/error.png`, status `needs_you` with reason "something broke on <page heading>", `error` = stack. Tab stays open.
@@ -352,7 +352,7 @@ Flow:
 
 ### Greenhouse / Lever / Ashby
 
-Single-page forms. Discover all fields in the form (Greenhouse: operate inside `#grnhse_iframe` when embedded), fill, upload resume, then scroll the Submit button into view without clicking → `ready`. Greenhouse/Ashby selects are often custom comboboxes → `pickCombobox`. Ashby yes/no questions are button pairs → treat as `radio`.
+Single-page forms. Discover all fields in the form, fill, upload resume, then scroll the Submit button into view without clicking → `ready`. **Greenhouse:** every job is opened at Greenhouse's own hosted form, `https://boards.greenhouse.io/embed/job_app?token=<job id>` (Greenhouse redirects to the right board), using the `gh_jid` / `/jobs/<id>` from the URL — company pages wrap the form in an iframe, a custom form (Waymo) or a bot check (Epic), so they're only opened to read the `#grnhse_iframe` token when the URL has no job id (D22). 404 → `skipped`. Form answers can reveal follow-up questions, so discovery runs again (≤2 extra passes) for fields not seen yet. Greenhouse/Ashby selects are often custom comboboxes → `pickCombobox`. Ashby yes/no questions are button pairs → treat as `radio`.
 
 ### Generic adapter (unknown ATS)
 
@@ -362,7 +362,7 @@ Best-effort fill by matching input `name`/`id`/`autocomplete`/label text against
 
 - `context.exposeBinding('__applypipeCapture', handler)` once per context; `context.addInitScript(captureScript)`.
 - The capture script adds a capture-phase `click` listener and a `submit` listener. On a submit-like click, or a Workday Next / Save and Continue click, it serializes every visible control: `{ fieldKey, label, type, value }` using the same `fieldKey` rules as discovery (shared code, bundled as a string), then calls the binding with `{ url, kind: 'submit' | 'next', fields }`.
-- Handler: match fields to `field_fills` by `(job, page_index, field_key)` (fall back to normalized label), set `final_value`, `edited`, `captured_at`. For `kind: 'submit'`, watch the page for 60 s: confirmation text (/thank you|application (has been )?(received|submitted)|we('ve| have) received/i) or a URL change to a confirmation path → `submitted` (📨), `submitted_at`; then (V2) run learning. If neither appears, keep `ready` (likely a validation error) and accept the next capture.
+- Handler: match fields to `field_fills` by `(job, page_index, field_key)` (fall back to normalized label), set `final_value`, `edited`, `captured_at`. For `kind: 'submit'`, watch the page for 60 s: confirmation text (ignored if the form already showed it before the click) (/thank you|application (has been )?(received|submitted)|we('ve| have) received/i) or a URL change to a confirmation path → `submitted` (📨), `submitted_at`; then (V2) run learning. If neither appears, keep `ready` (likely a validation error) and accept the next capture.
 - The binding maps a page to its job via a `jobId` stored on the Page object when the tab was created.
 
 ### Answer provider (`answers/`)
@@ -373,6 +373,7 @@ interface Answer { value: string | null; source: 'profile'|'locked'|'bank'|'llm'
 interface AnswerProvider { resolve(field: FormField, job: Job): Promise<Answer>; }
 ```
 
+- **Never auto-answered (any provider):** attestations and consents ("I acknowledge…", "I confirm…", "By checking this box, I consent…") and conditional follow-ups ("If you answered Other above…") — required ones stay red for the owner (D23).
 - **MVP `profileProvider`:** map field labels to profile paths with a keyword table (first name, last name, email, phone, city, LinkedIn, GitHub, school, degree, major, GPA, graduation, sponsorship now/future, authorized, relocate, EEO categories) and `standard_answers` by case-insensitive token overlap ≥0.8. Locked categories → flag green. No match → `{ value: null, source: 'none' }`.
 - **V2 `brainProvider`** (replaces it in Phase 7, same interface), in order:
   1. **Categorize** (`categorize.ts`): keyword rules → category; ambiguous labels get categorized in the same Claude call as step 4.

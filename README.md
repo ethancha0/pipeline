@@ -61,7 +61,9 @@ Only ✅ reactions from `DISCORD_OWNER_ID` in `DISCORD_CHANNEL_ID` queue jobs.
 npm start
 ```
 
-On start, applypipe scans the last 14 days (up to 500 messages) of the channel for posts you ✅'d while it was off, then keeps listening. Ctrl-C stops it.
+On start, applypipe scans the last 14 days (up to 500 messages) of the channel for posts you ✅'d while it was off, then keeps listening. A Chrome window (its own profile in `~/.applypipe/chrome-profile`, separate from your everyday Chrome) opens one tab per job, fills it, and stops at the Submit button with a badge in the corner: **ready** (green) or **needs you** (orange, with how many fields). Review, fix, click Submit yourself: applypipe records your final answers and marks the post 📨.
+
+Keep `npm start` running while you review: Ctrl-C closes the Chrome window, and submit capture only works while it runs. So far Greenhouse jobs are filled; Lever, Ashby and Workday jobs wait in the queue until their adapters land.
 
 ## Commands
 

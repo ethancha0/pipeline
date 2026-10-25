@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- Minimal stand-in for Greenhouse's react-select dropdowns: role=combobox input, listbox via aria-controls
+     only while open, selected value shown in a .select__single-value (sometimes shorter than the option). -->
+<html>
+<body>
+<form id="f">
+  <div id="country-wrap"></div>
+  <div id="school-wrap"></div>
+  <div id="answer-wrap"></div>
+  <button type="submit">Submit application</button>
+</form>
+<script>
+  function makeCombo(id, label, options, opts) {
+    opts = opts || {};
+    const wrap = document.getElementById(id + '-wrap');
+    wrap.innerHTML =
+      '<label id="' + id + '-label">' + label + '<span aria-hidden="true">*</span></label>' +
+      '<div class="select-shell x-container"><div class="select__control">' +
+      '<div class="select__single-value" hidden></div>' +
+      '<input id="' + id + '" role="combobox" aria-labelledby="' + id + '-label" aria-required="true" aria-expanded="false">' +
+      '</div><div class="select__menu" id="' + id + '-listbox" role="listbox" hidden></div></div>';
+    const input = document.getElementById(id);
+    const menu = document.getElementById(id + '-listbox');
+    const single = wrap.querySelector('.select__single-value');
+    let timer;
+    function render() {
+      const q = input.value.toLowerCase();
+      if (opts.async && q.length < 3) { menu.innerHTML = ''; return; }
+      menu.innerHTML = '';
+      options.filter((o) => o.toLowerCase().includes(q)).forEach((o) => {
+        const d = document.createElement('div');
+        d.setAttribute('role', 'option');
+        d.textContent = o;
+        d.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          single.textContent = opts.display ? opts.display(o) : o;
+          single.hidden = false;
+          input.value = '';
+          close();
+        });
+        menu.appendChild(d);
+      });
+    }
+    function open() {
+      menu.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      input.setAttribute('aria-controls', menu.id);
+      clearTimeout(timer);
+      if (opts.async) timer = setTimeout(render, 300); else render();
+    }
+    function close() {
+      menu.hidden = true;
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-controls');
+    }
+    input.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown') open(); if (e.key === 'Escape') close(); });
+    input.addEventListener('input', open);
+  }
+  makeCombo('country', 'Country', ['Afghanistan +93', 'United Kingdom +44', 'United States +1'], { display: (o) => o.replace(/ [^ ]+$/, '') });
+  makeCombo('school', 'School', ['University of California - Berkeley', 'University of California - Irvine', 'Irvine Valley College'], { async: true });
+  makeCombo('answer', 'Do you require sponsorship?', ['Yes', 'No']);
+  document.getElementById('f').addEventListener('submit', (e) => { e.preventDefault(); window.__submitted = true; });
+</script>
+</body>
+</html>

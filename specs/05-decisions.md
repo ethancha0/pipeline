@@ -25,6 +25,9 @@
 | D19 | Why-us drafts from JD + profile only | Fast and cheap; owner adds the specific hook while reviewing |
 | D20 | Catch-up scans the full `CATCHUP_DAYS` / 500-message window on every start instead of stopping at `last_processed_message_id` | A ✅ added offline to a post older than the last one scanned would otherwise be missed (the Phase 2 restart check); cost is ≤5 history pages plus one reaction lookup per unhandled ✅ post |
 | D21 | LinkedIn/Indeed links → `needs_you` "apply manually", never fetched or opened | ~60% of the live feed is LinkedIn/Indeed; automating them breaks their terms and risks the owner's accounts. Owner's choice (2026-10-24). Better fix lives upstream: have the scraper post the company's direct apply URL (e.g. JobSpy `job_url_direct`) when available |
+| D22 | Greenhouse jobs open at `boards.greenhouse.io/embed/job_app?token=<id>`, not the company page | All Greenhouse links in the live feed are company pages with `?gh_jid=`; those embed the form in an iframe (MongoDB), replace it with a custom form (Waymo) or sit behind Cloudflare (Epic). The job id alone opens Greenhouse's standard form for all of them (verified 2026-10-24) |
+| D23 | Attestations, consents and conditional follow-ups are never auto-answered | Legal attestations ("I confirm my answers are true", demographic-data consent) should be the owner's own click; "If you answered X above" fields depend on an earlier answer |
+| D24 | Jobs for an ATS without an adapter stay `queued` | They're filled automatically once that adapter's phase lands instead of being marked failed now |
 
 ## Rejected alternatives
 
@@ -56,4 +59,5 @@
 - **OQ2 — Shared Workday password.** One leak exposes every tenant. *Interim:* shared password as decided; keep `account.ts` written so a per-tenant password is a small change.
 - **OQ3 — Workday parsed work history.** Whether to keep the entries Workday parses from the resume or replace them from `profile.experience`. *Interim:* keep the parsed entries and flag the section yellow.
 - **OQ4 — Confidence threshold.** 0.7 is a guess; tune it after ~20 applications by checking how often yellow answers were edited (`field_fills`).
+- **OQ6 — Greenhouse validityToken.** Some company embeds pass a `validityToken` to the Greenhouse form; applypipe opens the form by job id without it (D22). Whether submits succeed without it is unconfirmed (applypipe never submits). *Interim:* use the job-id form; if a submit is rejected, fall back to the company page for that board.
 - **OQ5 — Bot detection on Workday/Greenhouse.** If CAPTCHAs become frequent, lower `MAX_PARALLEL` and add random 300–900 ms delays between fields before considering the extension route.

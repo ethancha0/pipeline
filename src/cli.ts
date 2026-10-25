@@ -1,11 +1,19 @@
 import { Command } from 'commander';
+import type { BrowserContext } from 'playwright';
+import { createProfileProvider } from './answers/profileProvider.js';
+import { installCapture } from './browser/capture.js';
+import { launchBrowser } from './browser/context.js';
 import { ConfigError, ensureHome, loadConfig, type Paths } from './config.js';
 import { openDb } from './db/db.js';
 import { DiscordLoginError, startBot, type Bot } from './discord/bot.js';
+import type { SetStatusEmoji } from './discord/status.js';
 import { countJobs, JOB_STATUSES, listByStatus, type Job } from './db/jobs.js';
+import type { PageLink } from './jobs/resolve.js';
 import { log } from './log.js';
+import { startScheduler } from './queue/scheduler.js';
 import {
   checkResume,
+  deriveLocked,
   issuesBySection,
   loadProfile,
   parseProfile,
@@ -23,11 +31,12 @@ const program = new Command()
 
 program
   .command('run')
-  .description('start the Discord bot: catch up on missed ✅, then queue live ones (Ctrl-C to stop)')
+  .description('start the bot and worker: catch up on missed ✅, fill queued jobs in Chrome (Ctrl-C to stop)')
   .action(async () => {
     const { paths, env } = loadConfig();
     const profile = parseProfileOrThrow(paths);
-    const resumeProblem = checkResume(resumePath(profile.resume, paths));
+    const resume = resumePath(profile.resume, paths);
+    const resumeProblem = checkResume(resume);
     if (resumeProblem) throw new ConfigError(`Invalid ${paths.profileFile}`, [`resume.path — ${resumeProblem}`]);
 
     const { db, migration } = openDb(paths.dbFile);
@@ -37,10 +46,38 @@ program
     // An external failure must never crash the run (CLAUDE.md rule 5).
     process.on('unhandledRejection', (err) => log.error({ err }, 'unhandled rejection'));
 
-    let bot: Bot;
+    let context: BrowserContext;
     try {
-      bot = await startBot(env, db);
+      context = await launchBrowser(paths.chromeProfile);
     } catch (err) {
+      db.close();
+      throw new ConfigError(`Couldn't start Chrome: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}`);
+    }
+    log.info('Chrome ready');
+
+    // The bot starts last (it needs the scheduler); emoji calls before then are no-ops.
+    let bot: Bot | undefined;
+    const setStatusEmoji: SetStatusEmoji = async (id, status) => bot?.setStatusEmoji(id, status);
+    await installCapture(context, { db, setStatusEmoji });
+    const scheduler = startScheduler({
+      db,
+      context,
+      profile,
+      resumePath: resume,
+      answers: createProfileProvider(profile, deriveLocked(profile), resume),
+      artifactsDir: paths.artifacts,
+      maxParallel: env.MAX_PARALLEL,
+      setStatusEmoji,
+    });
+
+    try {
+      bot = await startBot(env, db, {
+        resolveDeps: { readLinks: (url) => readLinksInBackground(context, url) },
+        onEnqueued: () => scheduler.notify(),
+      });
+    } catch (err) {
+      scheduler.stop();
+      await context.close().catch(() => {});
       db.close();
       if (err instanceof DiscordLoginError) throw new ConfigError(err.message);
       throw err;
@@ -55,9 +92,12 @@ program
         }
         stopping = true;
         log.info('shutting down… (Ctrl-C again to force)');
-        bot
+        scheduler.stop();
+        bot!
           .stop()
           .catch((err: unknown) => log.error({ err }, 'error while stopping the bot'))
+          .then(() => context.close())
+          .catch((err: unknown) => log.error({ err }, 'error while closing Chrome'))
           .finally(() => {
             db.close();
             log.info('stopped');
@@ -68,6 +108,23 @@ program
       process.on('SIGTERM', shutdown);
     });
   });
+
+/** Open a wrapper page (Simplify, GitHub) in a temporary tab and return its links. */
+async function readLinksInBackground(context: BrowserContext, url: string): Promise<PageLink[]> {
+  const page = await context.newPage();
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
+    return await page.evaluate(() =>
+      [...document.querySelectorAll('a[href]')].map((a) => ({
+        href: (a as HTMLAnchorElement).href,
+        text: ((a as HTMLElement).innerText || a.getAttribute('aria-label') || '').trim(),
+      })),
+    );
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
 
 function parseProfileOrThrow(paths: Paths) {
   const result = loadProfile(paths);
