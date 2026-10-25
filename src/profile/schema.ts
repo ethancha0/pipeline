@@ -4,24 +4,28 @@ const yearMonth = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'must be YYYY-MM')
 const isoDate = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, 'must be YYYY-MM-DD');
 const nonEmpty = z.string().trim().min(1, 'must not be empty');
 
+// A key left blank in YAML (`preferred_name:`) parses as null; treat it like an omitted optional key.
+const optional = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((v) => (v === null ? undefined : v), schema.optional());
+
 export const identitySchema = z.object({
   first_name: nonEmpty,
   last_name: nonEmpty,
-  preferred_name: nonEmpty.optional(),
+  preferred_name: optional(nonEmpty),
   email: z.email(),
   phone: nonEmpty,
   location: z.object({
     city: nonEmpty,
     state: nonEmpty,
     country: nonEmpty,
-    zip: z.coerce.string().optional(),
+    zip: optional(z.coerce.string()),
   }),
 });
 
 export const linksSchema = z.object({
   linkedin: z.url(),
   github: z.url(),
-  portfolio: z.url().optional(),
+  portfolio: optional(z.url()),
 });
 
 export const educationSchema = z
@@ -32,7 +36,7 @@ export const educationSchema = z
       major: nonEmpty,
       start: yearMonth,
       end: yearMonth,
-      gpa: z.coerce.string().optional(),
+      gpa: optional(z.coerce.string()),
     }),
   )
   .min(1, 'add at least one entry (the first is your current school)');
@@ -42,7 +46,7 @@ export const experienceSchema = z
     z.object({
       company: nonEmpty,
       title: nonEmpty,
-      location: nonEmpty.optional(),
+      location: optional(nonEmpty),
       start: yearMonth,
       end: z.union([yearMonth, z.literal('present')], { error: 'must be YYYY-MM or "present"' }),
       summary: nonEmpty,
@@ -58,7 +62,7 @@ export const workAuthSchema = z.object({
 
 export const availabilitySchema = z.object({
   terms: z.array(nonEmpty).min(1),
-  earliest_start: isoDate.optional(),
+  earliest_start: optional(isoDate),
   willing_to_relocate: z.boolean(),
 });
 
@@ -71,7 +75,7 @@ export const eeoSchema = z.object({
   disability: nonEmpty,
 });
 
-export const resumeSchema = z.object({ path: nonEmpty.optional() }).default({});
+export const resumeSchema = z.object({ path: optional(nonEmpty) }).default({});
 
 export const workdaySchema = z.object({ email: z.email() });
 
@@ -80,7 +84,7 @@ export const standardAnswersSchema = z
     z.object({
       question: nonEmpty,
       answer: z.coerce.string(),
-      locked: z.boolean().optional(),
+      locked: optional(z.boolean()),
     }),
   )
   .default([]);

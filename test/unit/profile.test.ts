@@ -43,6 +43,23 @@ describe('profile schema', () => {
     expect(result.issues.find((i) => i.path === 'education.0.end')?.message).toBe('must be YYYY-MM');
   });
 
+  it('treats blank optional keys as omitted', () => {
+    const data = example();
+    data.identity.preferred_name = null;
+    data.links.portfolio = null;
+    data.education[0].gpa = null;
+    const result = parseProfile(data);
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.profile.identity.preferred_name).toBeUndefined();
+  });
+
+  it('still rejects blank required keys', () => {
+    const data = example();
+    data.identity.first_name = null;
+    const result = parseProfile(data);
+    expect(result.ok ? [] : result.issues.map((i) => i.path)).toEqual(['identity.first_name']);
+  });
+
   it('requires at least one education entry', () => {
     const data = example();
     data.education = [];
