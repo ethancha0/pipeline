@@ -1,0 +1,66 @@
+# applypipe profile — copy to ~/.applypipe/profile.yaml (or $APPLYPIPE_HOME/profile.yaml)
+# and replace every placeholder. Check it with: npm run profile:check
+# This example file holds placeholders only. Never commit your real profile.
+
+identity:
+  first_name: Alex                     # legal first name
+  last_name: Example                   # legal last name
+  preferred_name: Al                   # optional; used where a form asks for a preferred name
+  email: alex@example.com              # contact email used on applications
+  phone: "+15555550100"                # E.164 or local format; adapters reformat per field
+  location:                            # LOCKED (location): filled only from here
+    city: Springfield                  # current city
+    state: CA                          # state/province
+    country: United States             # country as forms usually list it
+    zip: "00000"                       # optional; quote it so leading zeros survive
+
+links:
+  linkedin: https://www.linkedin.com/in/your-handle   # full LinkedIn profile URL
+  github: https://github.com/your-handle              # full GitHub profile URL
+  portfolio: https://example.com                      # optional personal site
+
+education:                             # first entry = current school (its `end` is your graduation date, LOCKED)
+  - school: Example University         # school name as it appears on transcripts
+    degree: Bachelor of Science        # degree type
+    major: Computer Science            # major / field of study
+    start: "2023-09"                   # YYYY-MM
+    end: "2027-06"                     # YYYY-MM expected graduation
+    gpa: "3.8"                         # optional; quoted so forms get the exact text
+
+experience:                            # used where a form asks for work history (may be empty: [])
+  - company: Example Corp              # employer name
+    title: Software Engineering Intern # job title
+    location: Remote                   # optional
+    start: "2025-06"                   # YYYY-MM
+    end: "2025-09"                     # YYYY-MM or "present"
+    summary: Built internal tools in TypeScript.  # one or two sentences
+
+work_auth:                             # LOCKED: never guessed, filled only from here
+  authorized_us: true                  # legally authorized to work in the US?
+  needs_sponsorship_now: false         # need visa sponsorship to start?
+  needs_sponsorship_future: false      # will you need sponsorship in the future?
+
+availability:
+  terms: ["Summer 2027"]               # internship terms you're applying for
+  earliest_start: "2027-05-15"         # optional, YYYY-MM-DD
+  willing_to_relocate: true            # answer to "willing to relocate?"
+
+eeo:                                   # LOCKED: option text to choose on the form, or "decline"
+  gender: decline                      # e.g. "Male", "Female", "Non-binary", or decline
+  race_ethnicity: decline              # e.g. "Asian", "White", ... or decline
+  hispanic_latino: decline             # e.g. "Yes", "No", or decline
+  veteran: decline                     # e.g. "I am not a protected veteran", or decline
+  disability: decline                  # e.g. "No, I do not have a disability", or decline
+
+resume:
+  path: ~/.applypipe/resume.pdf        # PDF to upload; defaults to $APPLYPIPE_HOME/resume.pdf if omitted
+
+workday:
+  email: alex@example.com              # account email used for every Workday tenant (password lives in Keychain)
+
+standard_answers:                      # answers reused across forms; locked: true means never changed by learning
+  - question: How did you hear about us?
+    answer: Online job board
+  - question: Are you at least 18 years old?
+    answer: "Yes"
+    locked: true

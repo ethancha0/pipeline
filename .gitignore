@@ -1,0 +1,28 @@
+# dependencies / build output
+node_modules/
+dist/
+coverage/
+
+# secrets and settings (env.example is the only committed template)
+.env
+.env*
+
+# personal data: everything under APPLYPIPE_HOME belongs outside the repo,
+# but block the same files here in case someone points APPLYPIPE_HOME inside it
+.applypipe/
+profile.yaml
+resume*.pdf
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-*
+answer-bank*.json
+artifacts/
+chrome-profile/
+fill-log*.json
+
+# OS / editor
+.DS_Store
+*.log
